@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="NutriZone — Interactive 3D Digital Twin Health Visualization powered by AI-driven nutrition analysis" />
+  <title>NutriZone — 3D Digital Twin</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/frontend/styles.css" />
+
+  <!-- Three.js via importmap -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- Loading Overlay -->
+  <div id="loading-overlay">
+    <div class="loader-container">
+      <div class="loader-ring"></div>
+      <div class="loader-ring delay"></div>
+      <div class="loader-text">
+        <span class="loader-title">NutriZone</span>
+        <span class="loader-subtitle" id="loading-status">Initializing 3D Engine…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Canvas -->
+  <canvas id="three-canvas"></canvas>
+
+  <!-- Top Bar -->
+  <header id="top-bar">
+    <div class="top-left">
+      <div class="logo-mark">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <circle cx="14" cy="14" r="12" stroke="url(#logoGrad)" stroke-width="2" fill="none"/>
+          <circle cx="14" cy="14" r="6" fill="url(#logoGrad)" opacity="0.6"/>
+          <circle cx="14" cy="14" r="3" fill="#fff"/>
+          <defs>
+            <linearGradient id="logoGrad" x1="0" y1="0" x2="28" y2="28">
+              <stop offset="0%" stop-color="#6366f1"/>
+              <stop offset="100%" stop-color="#06b6d4"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <h1 class="app-title">NutriZone</h1>
+      <span class="badge">3D Digital Twin</span>
+    </div>
+    <div class="top-right">
+      <div class="header-actions">
+        <button id="nav-meal-planner" class="header-btn active">Meal Planner</button>
+        <button id="nav-3d-twin" class="header-btn">3D Digital Twin</button>
+        <button id="nav-insights" class="header-btn">AI Insights</button>
+      </div>
+      <div class="status-indicator" id="api-status">
+        <span class="status-dot offline"></span>
+        <span class="status-label">Connecting…</span>
+      </div>
+      <div class="overall-health" id="overall-health">
+        <span class="health-label">Overall Health</span>
+        <span class="health-value" id="overall-health-value">—</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Organ Info Panel (shown on click/hover) -->
+  <div id="organ-panel" class="panel hidden">
+    <button id="panel-close" aria-label="Close panel">✕</button>
+    <div class="panel-header">
+      <div class="panel-icon" id="panel-icon"></div>
+      <div>
+        <h2 id="panel-title">—</h2>
+        <span class="panel-system" id="panel-system">—</span>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="health-bar-container">
+        <div class="health-bar-label">
+          <span>Health</span>
+          <span id="panel-health-pct">—</span>
+        </div>
+        <div class="health-bar-track">
+          <div class="health-bar-fill" id="panel-health-bar"></div>
+        </div>
+      </div>
+      <div class="panel-status" id="panel-status">—</div>
+      <div class="panel-function" id="panel-function">—</div>
+      <div class="panel-risks" id="panel-risks"></div>
+      <div class="panel-metrics" id="panel-metrics"></div>
+    </div>
+  </div>
+
+  <!-- Feed Twin Side Panel (overlays the 3D view) -->
+  <aside id="simulation-panel" class="side-panel hidden">
+    <div class="panel-header">
+      <h2>Feed Your Twin</h2>
+      <button id="sim-panel-close">✕</button>
+    </div>
+    <div class="panel-body">
+      <div class="input-group">
+        <label>Meal Name</label>
+        <input type="text" id="input-meal-name" value="My Meal" />
+      </div>
+      <div class="nutrient-grid">
+        <div class="input-group"><label>Calories</label><input type="number" id="input-cal" value="500" /></div>
+        <div class="input-group"><label>Carbs (g)</label><input type="number" id="input-carbs" value="50" /></div>
+        <div class="input-group"><label>Protein (g)</label><input type="number" id="input-protein" value="25" /></div>
+        <div class="input-group"><label>Fat (g)</label><input type="number" id="input-fat" value="15" /></div>
+        <div class="input-group"><label>Sugar (g)</label><input type="number" id="input-sugar" value="10" /></div>
+        <div class="input-group"><label>Fiber (g)</label><input type="number" id="input-fiber" value="5" /></div>
+        <div class="input-group"><label>Sodium (mg)</label><input type="number" id="input-sodium" value="400" /></div>
+        <div class="input-group"><label>Calcium (mg)</label><input type="number" id="input-calcium" value="100" /></div>
+        <div class="input-group"><label>Iron (mg)</label><input type="number" id="input-iron" value="2" /></div>
+      </div>
+      <div class="input-group checkbox-group">
+        <label><input type="checkbox" id="input-use-ollama" checked /> Use Ollama Agent</label>
+        <label><input type="checkbox" id="input-auto-apply" /> Auto-apply AI suggestion</label>
+      </div>
+      <button class="primary-btn" id="btn-simulate">Simulate Meal</button>
+      <div class="secondary-actions">
+        <button class="ghost-btn" id="btn-train">Train Agent</button>
+        <button class="ghost-btn danger" id="btn-reset">Reset Twin</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Feed Twin Toggle Button (floats on 3D view) -->
+  <button id="toggle-feed-twin" class="feed-twin-toggle">🍽️ Feed Twin</button>
+
+  <!-- Page Views -->
+  <div id="pages-container">
+
+    <!-- AI Insights Page -->
+    <div id="page-insights" class="page-view hidden">
+      <div class="page-content center-panel glass-panel">
+        <div class="panel-header">
+          <h2>AI Insights</h2>
+        </div>
+        <div class="panel-body insights-body" id="insights-body">
+          <div class="placeholder">Simulate a meal to see insights.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Meal Planner Page -->
+    <div id="page-meal-planner" class="page-view hidden">
+      <div class="page-content center-panel glass-panel large-panel">
+        <div class="modal-header panel-header">
+          <h2>Nutrition AI — Meal Planner</h2>
+        </div>
+        <div class="modal-body panel-body">
+          <div class="meal-planner-layout">
+            <!-- Sidebar: User Profile -->
+            <div class="meal-sidebar">
+              <h3>User Profile</h3>
+              <div class="input-section">
+                <h4>Basic Info</h4>
+                <div class="input-group"><label>Age</label><input type="number" id="mp-age" value="30"></div>
+                <div class="input-group"><label>Gender</label>
+                  <select id="mp-gender"><option value="Male">Male</option><option value="Female">Female</option></select>
+                </div>
+                <div class="input-group"><label>Height (cm)</label><input type="number" id="mp-height" value="162"></div>
+                <div class="input-group"><label>Weight (kg)</label><input type="number" id="mp-weight" value="68"></div>
+              </div>
+              <div class="input-section">
+                <h4>Lifestyle</h4>
+                <div class="input-group"><label>Activity Level</label>
+                  <select id="mp-activity"><option value="sedentary">Sedentary</option><option value="light">Light</option><option value="moderate">Moderate</option><option value="active">Active</option></select>
+                </div>
+                <div class="input-group"><label>Goal</label>
+                  <select id="mp-goal"><option value="fat_loss">Fat Loss</option><option value="maintenance">Maintenance</option><option value="muscle_gain">Muscle Gain</option></select>
+                </div>
+              </div>
+              <div class="input-section">
+                <h4>Health Conditions</h4>
+                <label class="cb-label"><input type="checkbox" id="mp-bp"> High blood pressure</label>
+                <label class="cb-label"><input type="checkbox" id="mp-sugar"> Diabetes</label>
+                <label class="cb-label"><input type="checkbox" id="mp-pcos"> PCOS</label>
+                <label class="cb-label"><input type="checkbox" id="mp-thyroid"> Thyroid</label>
+                <label class="cb-label"><input type="checkbox" id="mp-digestive"> Digestive issues (IBS)</label>
+              </div>
+            </div>
+            <!-- Main Content: Generation & Results -->
+            <div class="meal-main">
+              <div class="meal-actions">
+                <button class="primary-btn" id="btn-gen-day">Generate Today's Plan</button>
+                <button class="ghost-btn" id="btn-gen-week">Generate Weekly Plan</button>
+              </div>
+              <div id="meal-results" class="meal-results">
+                <div class="placeholder">Generate a plan to see your personalized meals here.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom HUD: organ quick-access -->
+  <div id="bottom-hud">
+    <div class="hud-organs" id="hud-organs">
+      <!-- Dynamically populated -->
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div id="legend">
+    <div class="legend-title">Health Status</div>
+    <div class="legend-item"><span class="legend-dot healthy"></span>Healthy (≥80%)</div>
+    <div class="legend-item"><span class="legend-dot moderate"></span>Moderate (60–79%)</div>
+    <div class="legend-item"><span class="legend-dot risk"></span>At Risk (&lt;60%)</div>
+  </div>
+
+  <!-- Main App Script -->
+  <script type="module" src="/frontend/app.js"></script>
+</body>
+</html>
